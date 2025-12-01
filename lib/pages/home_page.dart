@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../models/note.dart';
+import '../services/database_service.dart';
+import 'note_creation_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,26 +15,33 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final popoverController = ShadPopoverController();
   final searchController = TextEditingController();
-  final List<Note> _notes = [
-    Note(
-      id: '1',
-      title: 'First Note',
-      content: 'This is the content of the first note.',
-      type: NoteType.text,
-    ),
-    Note(
-      id: '2',
-      title: 'Second Note',
-      content: 'This is the content of the second note.',
-      type: NoteType.text,
-    ),
-  ];
+  final _dbService = DatabaseService();
+  List<Note> _notes = [];
   String _searchQuery = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    setState(() => _isLoading = true);
+
+    final notes = await _dbService.getAllNotes();
+
+    setState(() {
+      _notes = notes;
+      _isLoading = false;
+    });
+  }
 
   @override
   void dispose() {
     popoverController.dispose();
     searchController.dispose();
+
     super.dispose();
   }
 
@@ -50,17 +59,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _createTextNote() {
-    final newNote = Note(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'New Note',
-      content: '',
-      type: NoteType.text,
-    );
-
-    setState(() {
-      _notes.add(newNote);
-    });
     popoverController.hide();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NoteCreationPage()),
+    ).then((result) {
+      if (!result || !mounted) {
+        return;
+      }
+
+      _loadNotes();
+
+      ShadToaster.of(context).show(
+        ShadToast(
+          title: const Text('Note created'),
+          description: const Text('Your note has been saved successfully.'),
+        ),
+      );
+    });
   }
 
   @override
@@ -89,7 +106,9 @@ class _HomePageState extends State<HomePage> {
             ),
 
             Expanded(
-              child: _filteredNotes.isEmpty
+              child: _isLoading
+                  ? _buildSkeletonList()
+                  : _filteredNotes.isEmpty
                   ? _buildEmptyState(theme)
                   : _buildNotesList(),
             ),
@@ -110,7 +129,9 @@ class _HomePageState extends State<HomePage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
+
                       const SizedBox(height: 8),
+
                       ShadButton.ghost(
                         leading: Icon(LucideIcons.fileText, size: 16),
                         onPressed: _createTextNote,
@@ -145,12 +166,16 @@ class _HomePageState extends State<HomePage> {
             size: 64,
             color: theme.colorScheme.mutedForeground,
           ),
+
           const SizedBox(height: 16),
+
           Text(
             isSearching ? 'No notes found' : 'No notes yet',
             style: theme.textTheme.h4,
           ),
+
           const SizedBox(height: 8),
+
           Text(
             isSearching
                 ? 'Try a different search term'
@@ -179,6 +204,62 @@ class _HomePageState extends State<HomePage> {
           onTap: () {
             // TODO: Navigate to note editor
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildSkeletonList() {
+    final theme = ShadTheme.of(context);
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: 5,
+      separatorBuilder: (context, index) => const ShadSeparator.horizontal(),
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.muted,
+                  shape: BoxShape.circle,
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 16,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.muted,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Container(
+                      height: 12,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.muted,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

@@ -35,6 +35,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   shadcn_ui: ^0.39.14
+  sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.4+4
+  sqflite_common_ffi_web: ^0.4.5+2
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:
