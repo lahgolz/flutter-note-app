@@ -4,6 +4,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../models/note.dart';
 import '../services/database_service.dart';
 import 'note_creation_page.dart';
+import 'note_editor_page.dart';
 import 'note_preview_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -73,6 +74,56 @@ class _HomePageState extends State<HomePage> {
 
       _loadNotes();
     });
+  }
+
+  void _editNote(Note note) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => NoteEditorPage(note: note)),
+    ).then((result) {
+      if (!mounted) return;
+
+      _loadNotes();
+    });
+  }
+
+  Future<void> _deleteNote(Note note) async {
+    final toaster = ShadToaster.of(context);
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog.alert(
+        title: const Text('Delete Note'),
+        description: Text(
+          'Are you sure you want to delete "${note.title}"? This action cannot be undone.',
+        ),
+        actions: [
+          ShadButton.outline(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          ShadButton.destructive(
+            child: const Text('Delete'),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _dbService.deleteNote(note.id);
+      await _loadNotes();
+
+      if (!mounted) {
+        return;
+      }
+
+      toaster.show(
+        ShadToast(
+          title: const Text('Note deleted'),
+          description: const Text('Your note has been deleted.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -196,6 +247,21 @@ class _HomePageState extends State<HomePage> {
           subtitle: note.content.isNotEmpty
               ? Text(note.content, maxLines: 1, overflow: TextOverflow.ellipsis)
               : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(LucideIcons.pencil, size: 18),
+                onPressed: () => _editNote(note),
+                tooltip: 'Edit',
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.trash2, size: 18),
+                onPressed: () => _deleteNote(note),
+                tooltip: 'Delete',
+              ),
+            ],
+          ),
           onTap: () {
             Navigator.push(
               context,
