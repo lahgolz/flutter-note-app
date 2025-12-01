@@ -4,14 +4,16 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../models/note.dart';
 import '../services/database_service.dart';
 
-class NoteCreationPage extends StatefulWidget {
-  const NoteCreationPage({super.key});
+class NoteEditorPage extends StatefulWidget {
+  final Note note;
+
+  const NoteEditorPage({super.key, required this.note});
 
   @override
-  State<NoteCreationPage> createState() => _NoteCreationPageState();
+  State<NoteEditorPage> createState() => _NoteEditorPageState();
 }
 
-class _NoteCreationPageState extends State<NoteCreationPage> {
+class _NoteEditorPageState extends State<NoteEditorPage> {
   final _formKey = GlobalKey<ShadFormState>();
   final _dbService = DatabaseService();
   bool _isSaving = false;
@@ -24,24 +26,24 @@ class _NoteCreationPageState extends State<NoteCreationPage> {
     setState(() => _isSaving = true);
 
     final values = _formKey.currentState!.value;
-    final note = Note(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    final updatedNote = Note(
+      id: widget.note.id,
       title: values['title'] as String,
       content: values['content'] as String? ?? '',
-      type: NoteType.text,
+      type: widget.note.type,
     );
 
-    await _dbService.insertNote(note);
+    await _dbService.updateNote(updatedNote);
 
     if (mounted) {
       ShadToaster.of(context).show(
         ShadToast(
-          title: const Text('Note created'),
-          description: const Text('Your note has been saved successfully.'),
+          title: const Text('Note updated'),
+          description: const Text('Your changes have been saved.'),
         ),
       );
 
-      Navigator.pop(context, true);
+      Navigator.pop(context, updatedNote);
     }
   }
 
@@ -51,7 +53,7 @@ class _NoteCreationPageState extends State<NoteCreationPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Note'),
+        title: const Text('Edit Note'),
         backgroundColor: theme.colorScheme.background,
         foregroundColor: theme.colorScheme.foreground,
         elevation: 0,
@@ -68,26 +70,25 @@ class _NoteCreationPageState extends State<NoteCreationPage> {
                   id: 'title',
                   label: const Text('Title'),
                   placeholder: const Text('Enter note title'),
+                  initialValue: widget.note.title,
                   validator: (value) {
                     if (value.isEmpty) {
                       return 'Title is required';
                     }
+
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 Expanded(
                   child: ShadTextareaFormField(
                     id: 'content',
                     label: const Text('Content'),
                     placeholder: const Text('Write your note here...'),
+                    initialValue: widget.note.content,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 ShadButton(
                   onPressed: _isSaving ? null : _saveNote,
                   enabled: !_isSaving,

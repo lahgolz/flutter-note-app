@@ -4,6 +4,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../models/note.dart';
 import '../services/database_service.dart';
 import 'note_creation_page.dart';
+import 'note_preview_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
     _loadNotes();
   }
 
@@ -65,18 +67,11 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (context) => const NoteCreationPage()),
     ).then((result) {
-      if (!result || !mounted) {
+      if (!mounted) {
         return;
       }
 
       _loadNotes();
-
-      ShadToaster.of(context).show(
-        ShadToast(
-          title: const Text('Note created'),
-          description: const Text('Your note has been saved successfully.'),
-        ),
-      );
     });
   }
 
@@ -202,7 +197,16 @@ class _HomePageState extends State<HomePage> {
               ? Text(note.content, maxLines: 1, overflow: TextOverflow.ellipsis)
               : null,
           onTap: () {
-            // TODO: Navigate to note editor
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotePreviewPage(note: note),
+              ),
+            ).then((result) {
+              if (result == true && mounted) {
+                _loadNotes();
+              }
+            });
           },
         );
       },
