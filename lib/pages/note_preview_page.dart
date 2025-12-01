@@ -40,8 +40,7 @@ class _NotePreviewPageState extends State<NotePreviewPage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _build(BuildContext context) {
     final theme = ShadTheme.of(context);
 
     return Scaffold(
@@ -84,5 +83,10 @@ class _NotePreviewPageState extends State<NotePreviewPage> {
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Builder(builder: _build);
   }
 }
