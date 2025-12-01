@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../models/note.dart';
-import '../services/database_service.dart';
+import '../providers/notes_provider.dart';
 
 class NoteCreationPage extends StatefulWidget {
   const NoteCreationPage({super.key});
@@ -13,7 +14,6 @@ class NoteCreationPage extends StatefulWidget {
 
 class _NoteCreationPageState extends State<NoteCreationPage> {
   final _formKey = GlobalKey<ShadFormState>();
-  final _dbService = DatabaseService();
   bool _isSaving = false;
 
   Future<void> _saveNote() async {
@@ -30,11 +30,12 @@ class _NoteCreationPageState extends State<NoteCreationPage> {
       content: values['content'] as String? ?? '',
       type: NoteType.text,
     );
+    final toaster = ShadToaster.of(context);
 
-    await _dbService.insertNote(note);
+    await context.read<NotesProvider>().addNote(note);
 
     if (mounted) {
-      ShadToaster.of(context).show(
+      toaster.show(
         ShadToast(
           title: const Text('Note created'),
           description: const Text('Your note has been saved successfully.'),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../models/note.dart';
-import '../services/database_service.dart';
+import '../providers/notes_provider.dart';
 
 class NoteEditorPage extends StatefulWidget {
   final Note note;
@@ -15,7 +16,6 @@ class NoteEditorPage extends StatefulWidget {
 
 class _NoteEditorPageState extends State<NoteEditorPage> {
   final _formKey = GlobalKey<ShadFormState>();
-  final _dbService = DatabaseService();
   bool _isSaving = false;
 
   Future<void> _saveNote() async {
@@ -32,11 +32,12 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       content: values['content'] as String? ?? '',
       type: widget.note.type,
     );
+    final toaster = ShadToaster.of(context);
 
-    await _dbService.updateNote(updatedNote);
+    await context.read<NotesProvider>().updateNote(updatedNote);
 
     if (mounted) {
-      ShadToaster.of(context).show(
+      toaster.show(
         ShadToast(
           title: const Text('Note updated'),
           description: const Text('Your changes have been saved.'),

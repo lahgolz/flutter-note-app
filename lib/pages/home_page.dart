@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../models/note.dart';
-import '../services/database_service.dart';
+import '../providers/notes_provider.dart';
 import 'note_creation_page.dart';
 import 'note_editor_page.dart';
 import 'note_preview_page.dart';
@@ -17,27 +18,15 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final popoverController = ShadPopoverController();
   final searchController = TextEditingController();
-  final _dbService = DatabaseService();
-  List<Note> _notes = [];
   String _searchQuery = '';
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
 
-    _loadNotes();
-  }
-
-  Future<void> _loadNotes() async {
-    setState(() => _isLoading = true);
-
-    final notes = await _dbService.getAllNotes();
-
-    setState(() {
-      _notes = notes;
-      _isLoading = false;
-    });
+    Future.microtask(
+      () => mounted ? context.read<NotesProvider>().loadNotes() : null,
+    );
   }
 
   @override
@@ -48,12 +37,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  List<Note> get _filteredNotes {
+  List<Note> _getFilteredNotes(List<Note> notes) {
     if (_searchQuery.isEmpty) {
-      return _notes;
+      return notes;
     }
 
-    return _notes
+    return notes
         .where(
           (note) =>
               note.title.toLowerCase().contains(_searchQuery.toLowerCase()),
@@ -67,24 +56,14 @@ class _HomePageState extends State<HomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const NoteCreationPage()),
-    ).then((result) {
-      if (!mounted) {
-        return;
-      }
-
-      _loadNotes();
-    });
+    );
   }
 
   void _editNote(Note note) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => NoteEditorPage(note: note)),
-    ).then((result) {
-      if (!mounted) return;
-
-      _loadNotes();
-    });
+    );
   }
 
   Future<void> _deleteNote(Note note) async {
@@ -110,12 +89,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (confirmed == true && mounted) {
-      await _dbService.deleteNote(note.id);
-      await _loadNotes();
-
-      if (!mounted) {
-        return;
-      }
+      await context.read<NotesProvider>().deleteNote(note.id);
 
       toaster.show(
         ShadToast(
@@ -128,6 +102,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final notesProvider = context.watch<NotesProvider>();
+    final isLoading = notesProvider.isLoading;
+    final filteredNotes = _getFilteredNotes(notesProvider.notes);
 
     return Scaffold(
       body: SafeArea(
@@ -151,11 +128,11 @@ class _HomePageState extends State<HomePage> {
             ),
 
             Expanded(
-              child: _isLoading
-                  ? _buildSkeletonList()
-                  : _filteredNotes.isEmpty
+              child: isLoading
+                  ? _buildSkeletonList(theme)
+                  : filteredNotes.isEmpty
                   ? _buildEmptyState(theme)
-                  : _buildNotesList(),
+                  : _buildNotesList(filteredNotes),
             ),
 
             Padding(
@@ -232,13 +209,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildNotesList() {
+  Widget _buildNotesList(List<Note> filteredNotes) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _filteredNotes.length,
+      itemCount: filteredNotes.length,
       separatorBuilder: (context, index) => const ShadSeparator.horizontal(),
       itemBuilder: (context, index) {
-        final note = _filteredNotes[index];
+        final note = filteredNotes[index];
 
         return ListTile(
           leading: Icon(LucideIcons.fileText, size: 20),
@@ -267,20 +244,14 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(
                 builder: (context) => NotePreviewPage(note: note),
               ),
-            ).then((result) {
-              if (result == true && mounted) {
-                _loadNotes();
-              }
-            });
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildSkeletonList() {
-    final theme = ShadTheme.of(context);
-
+  Widget _buildSkeletonList(ShadThemeData theme) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: 5,
